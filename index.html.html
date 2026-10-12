@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>젬스 비서 노트 · 실시간판</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#fff;--fg:#111;--card:#f3f4f6;--bd:#d1d5db}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111827;--fg:#f9fafb;--card:#1f2937;--bd:#374151}}
+:root[data-theme="dark"]{--bg:#111827;--fg:#f9fafb;--card:#1f2937;--bd:#374151}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0 auto;background:var(--bg);color:var(--fg);font:20px/1.5 -apple-system,"Malgun Gothic","Noto Sans KR",sans-serif;padding:12px;max-width:760px}
+h1{font-size:22px;margin:4px 0}h2{font-size:22px;margin:18px 0 8px}h3{font-size:19px;margin:14px 0 6px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:8px 0}
+input,select,textarea{font-size:20px;padding:10px;width:100%;box-sizing:border-box;border:2px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--fg);font-family:inherit}
+.row{display:flex;align-items:center;gap:6px;justify-content:space-between;flex-wrap:wrap}
+.row b{flex:1 1 100%}
+button{font-size:20px;padding:12px 14px;border-radius:10px;border:2px solid var(--bd);background:var(--bg);color:var(--fg);cursor:pointer}
+.g.on{background:#16a34a;color:#fff;border-color:#16a34a}.y.on{background:#eab308;color:#000;border-color:#eab308}.r.on{background:#dc2626;color:#fff;border-color:#dc2626}
+.row button{flex:1}
+.big{background:#2563eb;color:#fff;border-color:#2563eb;width:100%;margin:6px 0}
+#res{font-size:24px;font-weight:700;text-align:center}
+.small{font-size:16px;opacity:.85}
+.hist{display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd)}
+#tabs{position:sticky;top:env(safe-area-inset-top,0px);display:flex;gap:4px;background:var(--bg);padding:6px 0;z-index:5}#tabs button{flex:1;font-size:14px;padding:6px 1px;line-height:1.3}#tabs button.on{background:#2563eb;color:#fff;border-color:#2563eb}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}.sl{font-size:14px;display:block;opacity:.85;margin-top:4px}.g2 input{font-size:20px;padding:8px}
+#list .card{padding:6px 10px;margin:4px 0}#list b{font-size:18px}#list button{font-size:17px;padding:8px 4px}
+.chip{display:inline-block;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:1px 6px;margin:2px 2px 0 0;font-size:14px}
+a.chip{text-decoration:none;color:#2563eb;font-weight:700;border-color:#2563eb}
+a.big{display:block;box-sizing:border-box;text-align:center;text-decoration:none;font-size:19px;padding:12px 14px;border-radius:10px;color:#fff;background:#0f766e;margin:6px 0;font-weight:700}
+button:active,a.big:active{transform:scale(.95);filter:brightness(.85)}button,a.big{transition:transform .08s,filter .08s}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:#111;color:#fff;padding:10px 18px;border-radius:22px;font-size:17px;z-index:99;opacity:0;transition:opacity .12s;pointer-events:none;max-width:92%;text-align:center}
+#toast.on{opacity:.95}
+@keyframes fl{0%{background:#fde68a}100%{background:transparent}}.flash{animation:fl 1.2s}
+</style></head><body>
+<div id='toast'></div>
+<h1>💎 젬스 비서 노트 · 실시간판</h1>
+<div id='tabs'>
+<button onclick='tab(0)'>🏠<br>한눈에</button><button onclick='tab(1)'>🔎<br>찾기</button><button onclick='tab(2)'>✅<br>점검</button><button onclick='tab(3)'>📊<br>숫자</button><button onclick='tab(4)'>💬<br>질문</button><button onclick='tab(5)'>📋<br>저장</button><button onclick='tab(6)'>📺<br>영상</button>
+</div>
+<div id='cs' class='small'>🔌 실시간 검색 모드 — 첫 질문 때 연결을 확인합니다</div>
+
+<div id='t0'>
+<div class='card small'>이 앱에는 <b>고정된 종목이 하나도 없습니다.</b> 종목은 매번 <b>🔎 찾기</b>에서 처음부터 조사해서 가져옵니다. 아래는 내가 직접 담은 관심 종목과 점검 결과입니다.</div>
+<div class='g2'><div><label class='sl'>티커</label><input id='wk' placeholder='예: ABC'></div><div><label class='sl'>메모</label><input id='wm' placeholder='왜 담았나'></div></div>
+<button class='big' onclick='addW()'>⭐ 관심 종목에 추가</button>
+<div id='wl'></div>
+</div>
+
+<div id='t1'>
+<div class='card small'>조건을 정하고 아래 버튼을 누르면, <b>기존 종목 목록 없이 처음부터</b> 조사하도록 Claude에게 보냅니다. (실시간 검색)</div>
+<div class='g2'>
+<div><label class='sl'>시총 하한 ($M)</label><input id='f_min' type='text' inputmode='decimal' value='20' oninput='cm(this)'></div>
+<div><label class='sl'>시총 상한 ($M)</label><input id='f_max' type='text' inputmode='decimal' value='1,000' oninput='cm(this)'></div>
+<div><label class='sl'>시총 순위 (부터)</label><input id='f_r1' type='text' inputmode='decimal' value='150' oninput='cm(this)'></div>
+<div><label class='sl'>시총 순위 (까지)</label><input id='f_r2' type='text' inputmode='decimal' value='800' oninput='cm(this)'></div>
+</div>
+<label class='sl'>찾는 성향</label>
+<select id='f_style'><option>조정 후 접근형 (고점 대비 하락, 수익은 유지·증가)</option><option>수익·수수료 급증형</option><option>신규 상장·공지형 (업비트·빗썸·바이낸스)</option><option>자유 (모든 각도에서)</option></select>
+<label class='sl'>관심 섹터 (비워도 됨)</label><input id='f_sec' placeholder='예: AI 에이전트, RWA, DePIN'>
+<label class='sl'>제외할 종목 (비워도 됨 · 기본은 없음)</label><input id='f_ex' placeholder='예: ABC, XYZ'>
+<label class='sl'>찾을 개수</label><select id='f_n'><option>3</option><option selected>5</option><option>10</option></select>
+<button class='big' style='background:#7c3aed' onclick='findNow()'>⚡ 앱 안에서 바로 실시간 조사 (웹검색)</button>
+<div id='fr'></div>
+<button class='big' onclick='findGo()'>🌐 Claude 대화창에서 조사하기 (더 길고 자세히)</button>
+<div id='fo'></div>
+<h3>📥 Claude 답변에서 종목 뽑아 담기</h3>
+<textarea id='fp' rows='5' placeholder='Claude 답변을 여기에 붙여넣기 ($티커 형식을 찾아 담아 줍니다)'></textarea>
+<button class='big' style='background:#475569' onclick='extractW()'>⭐ 답변 속 $티커를 관심 종목에 담기</button>
+<div id='fx2' class='small'></div>
+</div>
+
+<div id='t2'>
+<input id='tk' placeholder='종목 티커 (예: ABC)' oninput='ex2()'><div id='ex2' class='small'></div>
+<button class='big' onclick='auto()'>🔍 실시간 자동 분석 (웹검색 후 12개를 채워줌)</button>
+<div id='as' class='card small'>티커를 쓰고 위 버튼을 누르면 Claude가 웹검색으로 조사해서 12개 항목을 대신 채웁니다. (30~60초)</div>
+<div id='sm' class='card' style='display:none'></div>
+<div id='list'></div>
+<div class='card'><div id='res'>항목을 눌러 보세요</div></div>
+<button class='big' onclick='save()'>💾 이 결과 저장하기</button>
+</div>
+
+<div id='t3'>
+<div class='small'>숫자는 CoinMarketCap·CoinGecko·DefiLlama에서 확인해 입력하세요. 단위: 백만 달러($M)</div>
+<div class='row'><a class='chip' target='_blank' rel='noopener' href='https://coinmarketcap.com/'>CoinMarketCap ↗</a><a class='chip' target='_blank' rel='noopener' href='https://www.coingecko.com/'>CoinGecko ↗</a><a class='chip' target='_blank' rel='noopener' href='https://defillama.com/fees'>DefiLlama ↗</a></div>
+<div class='g2'><div><label class='sl'>💱 환율 (원/$)</label><input id='fx' type='text' inputmode='decimal' value='1,338.5' oninput='cm(this);kr()'></div><div><label class='sl'>💰 내 투자금 (원)</label><input id='inv' type='text' inputmode='decimal' value='1,000,000' oninput='cm(this);kr()'></div></div>
+<div class='g2'><div><label class='sl'>🛑 손절 기준 (%)</label><input id='sl' type='text' inputmode='decimal' value='20' oninput='cm(this);kr()'></div><div></div></div>
+<div id='nb' class='g2'></div><div id='nr'></div><h3>🇰🇷 원화로 보기</h3><div id='kr'></div>
+<button class='big' onclick='ap()'>⬆️ 이 결과를 12개 점검표에 반영</button>
+</div>
+
+<div id='t4'>
+<h3>💬 Claude에게 물어보기</h3>
+<div class='card'><div id='cl' style='max-height:340px;overflow-y:auto' class='small'>여기에 질문하면 웹검색(CoinMarketCap·CoinGecko·DefiLlama 등)까지 해서 답합니다. 보통 20~60초 걸립니다.</div>
+<textarea id='ci' rows='2' style='margin-top:8px' placeholder='예: 유통률이 낮으면 왜 위험해?'></textarea>
+<button class='big' id='cb' onclick='chat()'>보내기</button></div>
+<h3>📝 Claude에게 물어볼 질문 (자동 입력)</h3>
+<button class='big' onclick='cp(1)'>① 바이백/소각 종목 스캔</button>
+<button class='big' onclick='cp(2)'>② AI 에이전트(DeFAI) 종목 스캔</button>
+<button class='big' onclick='cp(3)'>③ 내 종목 정밀 검사</button>
+<button class='big' onclick='cp(4)'>☀️ 아침 브리핑 질문</button>
+<div id='msg' class='small'></div>
+</div>
+
+<div id='t5'><h3>📋 저장한 점검 결과</h3><div id='hist' class='card'>아직 없음</div></div>
+
+<div id='t6'>
+<div class='small'>유튜브를 보다가 궁금한 영상이 있으면, 영상 내용(자막)을 통째로 붙여넣으세요. 코인 이름이 안 나와도 설명으로 어떤 코인인지 유추하고 근거와 확신도를 알려 줍니다.<br>📌 자막 복사: 유튜브 영상 아래 "더보기" → "스크립트 표시" → 전체 선택 → 복사</div>
+<textarea id='vt' rows='9' placeholder='여기에 영상 내용을 붙여넣기' oninput='vcount()'></textarea>
+<div id='vc' class='small'>0자</div>
+<button class='big' style='background:#0f766e' onclick='vidSend()'>🌐 Claude 대화창으로 보내서 실시간 추적 (추천)</button>
+<button class='big' style='background:#475569' onclick='vidAI()'>🧠 앱 안 Claude로 언급 코인만 빠르게 뽑기 (1차)</button>
+<div id='vr'></div>
+<div class='small card'>⚠️ 유튜브 영상은 광고·협찬이거나 이미 오른 뒤에 소개하는 경우가 많습니다. 영상에서 본 코인은 "후보"로만 보고, 반드시 12대 필터로 다시 검증하세요.</div>
+</div>
+
+<p class="small">⚠️ 투자 판단과 손실 책임은 본인에게 있습니다. 이 도구는 점검용 참고표이며 수익을 보장하지 않습니다. 잃어도 생활에 지장 없는 돈만, 나눠서 접근하세요.</p>
+<script>
+function $(id){return document.getElementById(id)}
+var STO=(window.storage&&window.storage.get)?window.storage:null;
+function ld(k){try{return JSON.parse(localStorage.getItem(k)||'[]')}catch(e){return[]}}
+function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}try{if(STO)STO.set(k,JSON.stringify(v),false).catch(function(){})}catch(e){}}
+async function initSto(){if(!STO)return;try{var x=await STO.get('gems');if(x&&x.value)H=JSON.parse(x.value)}catch(e){}try{var y=await STO.get('gems_w');if(y&&y.value)W=JSON.parse(y.value)}catch(e){}draw();drawW()}
+var F=["1 가치 환원(바이백·소각)","2 언락·유통 비율","3 토큰 사용 강제성","4 미래 메가트렌드","5 기술적 해자","6 유니콘 체급(시총)","7 저평가·손익비","8 고래·스마트머니","9 커뮤니티 힘","10 온체인 실사용","11 백커·유동성","12 스마트컨트랙트 안전(백도어)"];
+var st=[],H=ld('gems'),W=ld('gems_w');
+function cm(el){var v=el.value.replace(/[^0-9.]/g,'');var p=v.split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');el.value=p.length>1?p[0]+'.'+p.slice(1).join(''):p[0]}
+function pv(id){var v=parseFloat(String($(id).value).replace(/,/g,''));return isNaN(v)?null:v}
+function tk0(x){return String(x||'').toUpperCase().replace(/[^A-Z0-9]/g,'')}
+function toast(t){var e=$('toast');if(!e)return;e.textContent=t;e.classList.add('on');clearTimeout(window._tt);window._tt=setTimeout(function(){e.classList.remove('on')},1700)}
+document.addEventListener('click',function(ev){var b=ev.target.closest?ev.target.closest('button,a.big'):null;if(!b)return;try{if(navigator.vibrate)navigator.vibrate(12)}catch(x){}toast('✅ 눌렀습니다 · '+b.textContent.replace(/\s+/g,' ').trim().slice(0,24))},true);
+function tab(n){for(var i=0;i<=7;i++){var e=$('t'+i);if(e)e.style.display=i===n?'block':'none'}var c=$('tabs').children;for(var k=0;k<c.length;k++)c[k].classList.toggle('on',c[k].getAttribute('onclick')==='tab('+n+')');window.scrollTo(0,0)}
+function clink(text,label){var a=document.createElement('a');a.className='big';a.target='_blank';a.rel='noopener';a.href=text.length<1100?'https://claude.ai/new?q='+encodeURIComponent(text):'https://claude.ai/new';a.textContent=label+(text.length<1100?'':' (질문이 복사됩니다. 붙여넣기 하세요)');a.onclick=function(){try{navigator.clipboard.writeText(text)}catch(e){}};return a}
+var RT={st:null};
+function setRt(){var e=$('cs');if(!e)return;e.textContent=RT.st?'🟢 앱 안 실시간 검색 연결됨 (질문마다 웹검색)':'🟡 앱 안 실시간 검색 실패 — 이 화면에서는 막혀 있을 수 있습니다. 대신 모든 버튼이 "Claude 대화창으로 보내기"로 작동합니다.'}
+function rich(t){var e=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');e=e.replace(/(https?:\/\/[^\s)<]+)/g,function(u){return "<a class='chip' target='_blank' rel='noopener' href='"+u+"'>"+u.replace(/^https?:\/\/(www\.)?/,'').slice(0,46)+" ↗</a>"});e=e.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>');return e.replace(/\n/g,'<br>')}
+async function ask(msgs,o){o=o||{};var body={model:'claude-sonnet-4-6',max_tokens:1000,messages:msgs};if(o.system)body.system=o.system;if(o.search!==false)body.tools=[{type:'web_search_20250305',name:'web_search'}];
+try{var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});var d=await r.json();
+if(d.error||!d.content){RT.st=false;setRt();return{ok:false,err:(d.error&&d.error.message)||('HTTP '+r.status)}}
+var t=d.content.filter(function(x){return x.type==='text'}).map(function(x){return x.text}).join('\n').trim();RT.st=true;setRt();return{ok:true,text:t,cut:d.stop_reason==='max_tokens'}}
+catch(e){RT.st=false;setRt();return{ok:false,err:(e&&e.message)||'연결 실패'}}}
+function jparse(t){try{return JSON.parse((String(t).match(/\{[\s\S]*\}/)||[''])[0])}catch(e){return null}}
+function okUrl(u,h){return typeof u==='string'&&u.indexOf('https://'+h)===0}
+function directRow(t,j){var h='';var cmc=j&&j.cmc,cg=j&&j.cg;h+=okUrl(cmc,'coinmarketcap.com/')?"<a class='chip' target='_blank' rel='noopener' href='"+cmc+"'>CoinMarketCap 열기 ↗</a>":"<a class='chip' target='_blank' rel='noopener' href='https://www.google.com/search?q="+encodeURIComponent('site:coinmarketcap.com/currencies '+t)+"'>CoinMarketCap 찾기 ↗</a>";
+h+=(okUrl(cg,'www.coingecko.com/')||okUrl(cg,'coingecko.com/'))?"<a class='chip' target='_blank' rel='noopener' href='"+cg+"'>CoinGecko 열기 ↗</a>":"<a class='chip' target='_blank' rel='noopener' href='https://www.google.com/search?q="+encodeURIComponent('site:coingecko.com/en/coins '+t)+"'>CoinGecko 찾기 ↗</a>";return h}
+function lkRow(t,cg){if(!t)return '';var g=function(q){return 'https://www.google.com/search?q='+encodeURIComponent(q)};
+return "<a class='chip' target='_blank' rel='noopener' href='"+g('site:coinmarketcap.com/currencies '+t)+"'>CoinMarketCap 찾기 ↗</a><a class='chip' target='_blank' rel='noopener' href='"+(cg?'https://www.coingecko.com/en/coins/'+encodeURIComponent(cg):g('site:coingecko.com/en/coins '+t))+"'>CoinGecko "+(cg?'열기':'찾기')+" ↗</a>"}
+function tickersIn(t){var seen={},a=[],re=/\$([A-Za-z][A-Za-z0-9]{1,9})\b/g,m,skip={USD:1,USDT:1,USDC:1,KRW:1,EUR:1};while((m=re.exec(t))){var k=m[1].toUpperCase();if(!seen[k]&&!skip[k]){seen[k]=1;a.push(k)}}return a}
+function chipsFor(t){var box=document.createElement('div');tickersIn(t).forEach(function(k){var d=document.createElement('div');d.className='card small';var b=document.createElement('b');b.textContent='$'+k+' 확인 링크';d.appendChild(b);var l=document.createElement('div');l.innerHTML=lkRow(k);d.appendChild(l);var r=document.createElement('div');r.className='row';var b1=document.createElement('button');b1.textContent='⭐ 담기';b1.onclick=function(){addW(k,'질문에서 담음 '+new Date().toLocaleDateString('ko-KR'));toast('⭐ $'+k+' 담음')};var b2=document.createElement('button');b2.textContent='✅ 점검';b2.onclick=function(){$('tk').value=k;ex2();tab(2)};r.appendChild(b1);r.appendChild(b2);d.appendChild(r);box.appendChild(d)});return box}
+function ex2(){var t=tk0($('tk').value);$('ex2').innerHTML=t?'🔗 '+lkRow(t):''}
+/* ---------- 12개 점검표 ---------- */
+var LST=$('list');
+F.forEach(function(n,i){var d=document.createElement('div');d.className='card row';d.innerHTML="<b>"+n+"</b><button class='g' onclick='s("+i+",1)'>🟢 좋음</button><button class='y' onclick='s("+i+",.5)'>🟡 주의</button><button class='r' onclick='s("+i+",0)'>🔴 나쁨</button><span class='small' id='w"+i+"' style='flex:1 1 100%'></span>";LST.appendChild(d)});
+function s(i,v){st[i]=v;var b=LST.children[i].querySelectorAll('button');['g','y','r'].forEach(function(c,k){b[k].classList.toggle('on',[1,.5,0][k]===v)});calc()}
+function calc(){var n=0,sum=0,red=st[11]===0;st.forEach(function(v){if(v!==undefined){n++;sum+=v}});
+if(n<12){$('res').textContent='진행 '+n+'/12'+(red?' · ⛔ 12번 빨강 = 스캠 위험':'');return null}
+var sc=Math.round(sum/12*100)/10,t;if(red)t='🔴 Tier-3 절대 불가 (스캠 위험)';else if(sc>=8)t='🟢 Tier-1 원픽 후보';else if(sc>=5)t='🟡 Tier-2 주의요함·전략 매수';else t='⚪ 점수 낮음: 관망';
+$('res').textContent=sc.toFixed(1)+' / 10 · '+t;return {sc:sc,t:t}}
+function save(){var k=tk0($('tk').value),r=calc();if(!k){alert('종목 티커를 먼저 쓰세요');return}if(!r){alert('12개 항목을 모두 눌러 주세요');return}
+H.unshift({k:k,sc:r.sc,t:r.t,d:new Date().toLocaleDateString('ko-KR')});sv('gems',H);draw();drawW();toast('💾 저장했습니다')}
+function del(i){H.splice(i,1);sv('gems',H);draw();drawW()}
+function draw(){var h=$('hist');if(!H.length){h.textContent='아직 없음';return}
+h.innerHTML=H.map(function(x,i){return "<div class='hist'><span><b>$"+x.k+"</b> "+x.sc.toFixed(1)+"점<br><span class='small'>"+x.t+" · "+x.d+"</span></span><button onclick='del("+i+")'>삭제</button></div>"}).join('')}
+async function auto(){var k=tk0($('tk').value),as=$('as');if(!k){alert('종목 티커를 먼저 쓰세요');return}
+as.textContent='⏳ $'+k+' 실시간 검색·분석 중... (보통 30~60초)';
+var p='웹검색(CoinMarketCap, CoinGecko, DefiLlama 등)으로 종목 $'+k+' 를 조사해서 아래 12개 필터로 평가하라. 확인하지 못한 항목은 v를 0.5로, why에 확인 필요라고 쓰고 절대 숫자를 지어내지 마라. 오직 JSON만 출력(설명 문장 금지): {"items":[{"v":1 또는 0.5 또는 0,"why":"25자 이내 한국어 한 줄"} 를 정확히 12개 아래 순서대로],"summary":"한국어 3줄: 시총과 순위(CMC 우선), 강점, 위험","cmc":"검색에서 확인한 CoinMarketCap 종목 주소 또는 빈칸","cg":"검색에서 확인한 CoinGecko 종목 주소 또는 빈칸"}. 필터 순서: '+F.join('; ');
+var r=await ask([{role:'user',content:p}]);
+if(!r.ok){as.innerHTML='';var n0=document.createElement('div');n0.textContent='앱 안 실시간 검색이 안 됩니다('+r.err+'). 아래 버튼으로 Claude 대화창을 쓰세요.';as.appendChild(n0);as.appendChild(clink('$'+k+' 실시간 웹검색과 온체인으로 12대 정밀 필터 팩트 스캔해줘. 시총 순위(CMC 우선), 유통률, 언락, 고래 집중, 백도어·무한민팅, 국내외 상장 거래소 포함. CoinMarketCap·CoinGecko 주소도 알려줘.','🌐 Claude에서 $'+k+' 실시간 분석'));return}
+var j=jparse(r.text);
+if(!j||!j.items||j.items.length<12){as.innerHTML='🧠 '+rich(r.text)+(r.cut?'<br><span class="small">⚠️ 길어서 잘렸습니다.</span>':'');$('ex2').innerHTML='🔗 '+directRow(k,null);return}
+j.items.slice(0,12).forEach(function(x,i){var v=Number(x.v);v=v>=1?1:(v>0?.5:0);s(i,v);$('w'+i).textContent='→ '+x.why});
+var b=$('sm');b.style.display='block';b.textContent=j.summary||'';$('ex2').innerHTML='🔗 '+directRow(k,j);
+as.textContent='✅ 실시간 검색 분석 완료. 숫자는 위 링크에서 직접 확인하세요.'}
+/* ---------- 숫자·원화 ---------- */
+var N=[['mc','시총 ($M)'],['fd','FDV 완전희석가치 ($M)'],['vo','24시간 거래량 ($M)'],['fe','연 프로토콜 수익 ($M)'],['bb','연 바이백·소각 ($M)'],['wh','상위 10지갑 비중 (%) CEX 제외'],['ul','향후 12개월 언락 ($M)']];
+var NB=$('nb');
+N.forEach(function(a){var w=document.createElement('div');var l=document.createElement('label');l.className='sl';l.textContent=a[1];var i=document.createElement('input');i.id='n_'+a[0];i.type='text';i.inputMode='decimal';i.oninput=function(){cm(this);num()};w.appendChild(l);w.appendChild(i);NB.appendChild(w)});
+function fillNums(o){N.forEach(function(a){var e=$('n_'+a[0]);var v=o[a[0]];e.value=(v!==undefined&&v!=='')?v:'';cm(e)});num()}
+var NG={};
+function num(){try{kr()}catch(e){}
+function g(k){return pv('n_'+k)}
+var mc=g('mc'),fd=g('fd'),vo=g('vo'),fe=g('fe'),bb=g('bb'),wh=g('wh'),ul=g('ul');
+function hi(v,a,b){return v>=a?1:(v>=b?.5:0)}function lo(v,a,b){return v<=a?1:(v<=b?.5:0)}
+var R=[],E=['🔴','🟡','🟢'];NG={};
+function add(k,nm,v,u,gr,rule){R.push([nm,v,u,gr,rule]);NG[k]=gr}
+if(mc&&fd)add('cr','유통률 (시총÷FDV)',mc/fd*100,'%',hi(mc/fd*100,60,30),'60%↑ 🟢 · 30%↑ 🟡');
+if(mc&&vo)add('tv','유동성 회전율 (거래량÷시총)',vo/mc*100,'%',hi(vo/mc*100,10,3),'10%↑ 🟢 · 3%↑ 🟡');
+if(mc&&bb!==null)add('by','바이백 수익률 (연 바이백÷시총)',bb/mc*100,'%',hi(bb/mc*100,5,1),'5%↑ 🟢 · 1%↑ 🟡');
+if(fe&&bb!==null)add('br','바이백 비율 (연 바이백÷연 수익)',bb/fe*100,'%',hi(bb/fe*100,35,10),'35%↑ 🟢 · 10%↑ 🟡');
+if(mc&&fe)add('pf','P/F (시총÷연 수익)',mc/fe,'배',lo(mc/fe,15,50),'15배↓ 🟢 · 50배↓ 🟡');
+if(mc&&ul!==null)add('ul','언락 압박 (12개월 언락÷시총)',ul/mc*100,'%',lo(ul/mc*100,10,30),'10%↓ 🟢 · 30%↓ 🟡');
+if(wh!==null)add('wh','고래 집중 (상위 10지갑)',wh,'%',lo(wh,30,60),'30%↓ 🟢 · 60%↓ 🟡');
+var o=$('nr');if(!R.length){o.textContent='숫자를 넣어 주세요 (시총과 FDV부터).';return}
+o.innerHTML=R.map(function(r){return `<div class='hist'><span>${r[0]}<br><span class='small'>${r[4]}</span></span><b>${r[1].toLocaleString('en-US',{maximumFractionDigits:1})}${r[2]} ${E[r[3]*2]}</b></div>`}).join('')+`<div class='small'>※ 기준은 일반적인 참고용 눈금이며 정답이 아닙니다. 빈 칸은 확인 필요 항목입니다.</div>`}
+function ap(){num();[['br',0],['pf',6],['wh',7],['tv',10]].forEach(function(x){if(NG[x[0]]!==undefined)s(x[1],NG[x[0]])});var u=[NG.cr,NG.ul].filter(function(v){return v!==undefined});if(u.length)s(1,Math.min.apply(null,u));tab(2)}
+function kr(){var o=$('kr');var fx=pv('fx');if(!fx||fx<=0){o.textContent='환율을 넣어 주세요.';return}
+function g(k){return pv('n_'+k)}
+function won(m){var w=m*1e6*fx;if(w>=1e12)return (w/1e12).toFixed(2)+'조원';return Math.round(w/1e8).toLocaleString('ko-KR')+'억원'}
+var L=[['mc','시총'],['fd','FDV'],['vo','24시간 거래량'],['fe','연 수익'],['bb','연 바이백'],['ul','12개월 언락']],h='';
+L.forEach(function(a){var v=g(a[0]);if(v!==null)h+="<div class='hist'><span>"+a[1]+"</span><b>$"+v.toLocaleString('en-US')+"M ≈ "+won(v)+"</b></div>"});
+var inv=pv('inv');
+if(inv>0){var usd=inv/fx;h+="<div class='hist'><span>내 투자금</span><b>"+Math.round(inv).toLocaleString('ko-KR')+"원 ≈ $"+usd.toLocaleString('en-US',{maximumFractionDigits:1})+"</b></div>";
+var vo=g('vo');if(vo){var p=usd/(vo*1e6)*100;var j=p<0.01?'🟢 아주 작음(체결 쉬움)':(p<0.1?'🟡 보통':'🔴 큼(분할매수 필수)');h+="<div class='hist'><span>하루 거래량 대비 내 금액<br><span class='small'>0.01%↓ 🟢 · 0.1%↓ 🟡</span></span><b>"+p.toFixed(5)+"% "+j+"</b></div>"}
+h+="<div class='hist'><span>3번에 나눠 사면</span><b>1회 약 "+Math.round(inv/3).toLocaleString('ko-KR')+"원</b></div>";
+var sl=pv('sl');if(sl>0&&sl<100){var ls=inv*sl/100;h+="<div class='hist'><span>손절 -"+sl+"% 시</span><b>손실 약 "+Math.round(ls).toLocaleString('ko-KR')+"원<br><span class='small'>남는 돈 "+Math.round(inv-ls).toLocaleString('ko-KR')+"원</span></b></div>"}}
+o.innerHTML=h+"<div class='small'>※ 거래소 수수료·스프레드는 별도입니다. 국내 거래소 가격은 김치 프리미엄 때문에 달러 환산값과 다를 수 있습니다.</div>"}
+/* ---------- 질문·대화 ---------- */
+var P={
+1:"[요청: 바이백/소각 온체인 젬스 실시간 스캔]\n기존에 알던 종목이나 유명 종목을 전제로 하지 말고 처음부터 DefiLlama와 온체인 데이터를 직접 검색해서, 시가총액 $1억 이하, 수수료의 35% 이상을 스마트컨트랙트로 바이백·소각하는 종목 2~3개를 찾아 '12대 정밀 필터 v2.1'로 검증해줘. 종목명/티커, 시총(CMC 우선)과 순위, 원화 환산, 바이백 메커니즘, [Yellow Flag], Tier-1/Tier-2 점수로 알려줘.",
+2:"[요청: DeFAI / AI 에이전트 신규 젬스 온체인 스캔]\n처음부터 CoinGecko, DefiLlama, 공개 뉴스를 검색해서 시총 $2,000만~$3억의 DeFAI·AI 에이전트 종목 2개를 12대 정밀 필터로 분석해줘. 기술 해자, 언락 매도압박, 상방 대 리스크, 국내 상장 여부 포함.",
+3:"[요청: 특정 종목 12대 필터 정밀 팩트 스캔]\n분석 대상: $(여기에 티커)\n실시간 웹검색과 온체인 탐색기로 바이백 유무, 유통률·언락, 상위 100 지갑 집중도, 백도어·무한민팅 여부(Red Flag), 시총 순위(CMC 우선), 원화 환산, 국내외 상장 거래소, 매수/매도 전략을 12대 필터 기준으로 차갑게 검증해줘.",
+4:"[아침 브리핑] 오늘 아침 암호화폐 시장 요약(비트코인 흐름, 주요 뉴스), 앞으로 7일 내 주요 토큰 언락 일정, 지금 자본이 몰리는 섹터를 짧게 알려줘. 소액 투자자 기준으로 오늘 조심할 점 3가지도 같이."};
+function cp(n){var t=P[n];if(n===3){var k=tk0($('tk').value);if(k)t=t.replace('(여기에 티커)',k)}
+var m=$('msg');m.innerHTML='';m.appendChild(clink(t,'🌐 Claude 대화창에서 열기 (질문 자동 입력)'));var x=document.createElement('div');x.className='small';x.textContent='질문은 복사도 됐습니다. 링크가 안 열리면 Claude 대화창에 붙여넣기 하세요.';m.appendChild(x);try{navigator.clipboard.writeText(t)}catch(e){}}
+function chatCtx(){var wl=W.map(function(x){return '$'+x.k+(x.memo?'('+x.memo+')':'')}).join(', ')||'없음';var nums=N.map(function(a){return a[1]+'='+($('n_'+a[0]).value||'미입력')}).join(', ');
+return '[역할] 너는 한국인 소액 투자자(60대, 코딩 모름)를 돕는 암호화폐 분석 도우미다. 한국어로 쉽고 짧게(5줄 이내) 질문에 직접 답하라. 이 앱에는 미리 정해진 종목 목록이 없다. 사용자가 입력한 것과 네가 확실히 아는 것만 근거로 삼아라. 인사나 테스트 질문에는 한 줄로 답하고 물어볼 만한 질문 예시 3개를 제안하라. 같은 면책 문구를 반복하지 마라. 실시간 검색은 못 하므로 가격, 시총, 뉴스는 모른다고 한 줄로 말하고 실시간 확인은 화면의 Claude 대화창으로 보내기 버튼을 쓰라고 안내하라. 숫자를 지어내지 마라. 매수 추천은 하지 말고 근거와 위험을 비교하라.\n[현재 입력] 티커='+($('tk').value||'없음')+', 환율='+$('fx').value+', 투자금(원)='+$('inv').value+'\n[숫자 입력] '+nums+'\n[내 관심 종목] '+wl+'\n\n[사용자 질문]\n'}
+var CH=[];
+function chatSys(){var wl=W.map(function(x){return '$'+x.k+(x.memo?'('+x.memo+')':'')}).join(', ')||'없음';var nums=N.map(function(a){return a[1]+'='+($('n_'+a[0]).value||'미입력')}).join(', ');
+return '너는 한국인 소액 투자자(60대, 코딩 모름)를 돕는 암호화폐 분석 도우미다. 한국어로 쉽고 짧게 질문에 직접 답하라. 필요하면 웹검색(CoinMarketCap, CoinGecko, DefiLlama, 거래소 공지, 공개 기사)을 직접 해서 최신 정보로 답하라. 시총은 CoinMarketCap 기준을 우선하고 없으면 CoinGecko를 쓰되 출처를 적어라. 답에서 언급하는 종목은 반드시 $티커 형식으로 쓰고, 검색에서 확인한 CoinMarketCap·CoinGecko 종목 주소를 한 줄씩 적어라(확인 못 한 주소는 쓰지 마라). 숫자를 지어내지 마라. 전체 답변은 900토큰 이내로, 같은 면책 문구를 반복하지 말고 위험은 구체적으로 한 줄만. 매수 추천이 아니라 근거와 위험을 비교하라. 이 앱에는 미리 정해진 종목 목록이 없다.\n[현재 입력] 티커='+($('tk').value||'없음')+', 환율='+$('fx').value+', 투자금(원)='+$('inv').value+'\n[숫자 입력] '+nums+'\n[내 관심 종목] '+wl}
+async function chat(){var i=$('ci'),q=i.value.trim(),c=$('cl'),b=$('cb');if(!q)return;
+function add(who,t){var d=document.createElement('div');d.style.cssText='padding:6px 0;border-bottom:1px solid var(--bd);white-space:pre-wrap;font-size:19px';d.textContent=who+' '+t;c.appendChild(d);c.scrollTop=c.scrollHeight;return d}
+if(!CH.length)c.textContent='';
+add('🙋',q);i.value='';CH.push({role:'user',content:q});b.disabled=true;var w=add('🤖','⏳ 실시간 검색 중... (보통 20~60초)');
+var rec=CH.slice(-8).map(function(m){return{role:m.role,content:m.content}});if(rec[0].role!=='user')rec.shift();
+var r=await ask(rec,{system:chatSys()});
+if(r.ok){w.style.whiteSpace='normal';w.innerHTML='🤖 '+rich(r.text)+(r.cut?'<br><span class="small">⚠️ 길어서 잘렸습니다. "이어서"라고 보내 보세요.</span>':'');CH.push({role:'assistant',content:r.text});var ch=chipsFor(q+' '+r.text+' $'+tk0($('tk').value));if(ch.children.length)c.appendChild(ch)}
+else{CH.pop();w.textContent='🤖 앱 안 실시간 검색이 안 됩니다('+r.err+'). 아래 버튼으로 Claude 대화창을 쓰세요.';c.appendChild(clink(q,'🌐 이 질문을 Claude 대화창으로 보내기'));var ch2=chipsFor(q+' $'+tk0($('tk').value));if(ch2.children.length)c.appendChild(ch2)}
+b.disabled=false;c.scrollTop=c.scrollHeight}
+/* ---------- 찾기 (제로베이스) ---------- */
+function buildFind(compact){var mn=pv('f_min')||0,mx=pv('f_max')||0,r1=pv('f_r1')||0,r2=pv('f_r2')||0,sty=$('f_style').value,sec=$('f_sec').value.trim(),ex=$('f_ex').value.trim(),n=$('f_n').value;
+var fm=function(v){return v.toLocaleString('en-US')};
+var p='[요청: 제로베이스 숨은 종목 발굴]\n이전 대화, 기존 종목 목록, 이미 유명한 종목을 출발점으로 삼지 말고 처음부터 새로 조사해줘.\n조건: 시총 $'+fm(mn)+'M~$'+fm(mx)+'M, 시총 순위 '+fm(r1)+'~'+fm(r2)+'위, 성향: '+sty+', 섹터: '+(sec||'제한 없음')+', 제외할 종목: '+(ex||'없음')+', 찾을 개수: '+n+'개.\n방법: 서로 다른 각도로 최소 8회 이상 검색해줘. ① DefiLlama 수익·홀더 수익 증가 ② 신규 상장·공지(업비트·빗썸·바이낸스) ③ 개발·사용자 증가 ④ 섹터의 2~4번째 종목 ⑤ 언락·고래 집중. 후보 10~20개를 모은 뒤 12대 정밀 필터로 좁혀줘.\n각 종목마다: 시총(CoinMarketCap 우선, 없으면 CoinGecko)과 순위, 오늘 환율로 원화 환산, 고점 대비 위치, 핵심 근거, 위험, 업비트·빗썸 상장 여부, 왜 덜 알려졌는지 한 줄. 확인 못 한 숫자는 확인 못 함이라고 쓰고 지어내지 마.\n마지막 줄에 결과 종목을 $티커 형식으로 모아줘.';
+if(compact)p+='\n형식: 앱 안 호출이라 전체 900토큰 이내로 짧게. 종목마다 4줄 이내(시총·순위·고점대비 / 핵심 근거 / 위험 / 국내 상장), 그리고 CoinMarketCap·CoinGecko 종목 주소를 검색에서 확인한 것만 한 줄씩 적어줘.';return p}
+function findGo(){var p=buildFind(false);var o=$('fo');o.innerHTML='';var c=document.createElement('div');c.className='small card';c.textContent='✅ 조건이 질문으로 만들어졌습니다. 아래 버튼을 누르면 Claude가 처음부터 조사합니다. 끝나면 답변을 복사해서 아래 칸에 붙여넣으면 종목을 담아 줍니다.';o.appendChild(c);o.appendChild(clink(p,'🌐 Claude에서 처음부터 조사 시작 ↗'));try{navigator.clipboard.writeText(p)}catch(e){}}
+async function findNow(){var n=$('f_n');if(Number(n.value)>3)toast('앱 안은 길이 제한이 있어 3개 권장입니다');var p=buildFind(true);var o=$('fr');o.innerHTML='';var c=document.createElement('div');c.className='card small';c.textContent='⏳ 실시간 조사 중... (보통 30~90초, 여러 곳을 검색합니다)';o.appendChild(c);
+var r=await ask([{role:'user',content:p}],{system:'너는 한국인 소액 투자자를 돕는 암호화폐 리서치 도우미다. 웹검색을 여러 번 직접 해서 처음부터 조사한다. 숫자를 지어내지 말고 못 찾으면 확인 못 함이라고 쓴다. 종목은 반드시 $티커 형식으로 쓴다.'});
+if(!r.ok){c.textContent='앱 안 실시간 조사가 안 됩니다('+r.err+'). 아래 "Claude 대화창에서 조사하기"를 쓰세요.';return}
+c.innerHTML=rich(r.text)+(r.cut?'<br><span class="small">⚠️ 답이 길어 잘렸습니다. 개수를 줄이거나 Claude 대화창 버튼을 쓰세요.</span>':'');o.appendChild(chipsFor(r.text));
+var ta=$('fp');if(ta&&!ta.value)ta.value=r.text;toast('✅ 조사 완료')}
+function extractW(){var t=$('fp').value,o=$('fx2');var seen={},add=[];var re=/\$([A-Za-z][A-Za-z0-9]{1,9})\b/g,m;var skip={USD:1,USDT:1,USDC:1,KRW:1,EUR:1};
+while((m=re.exec(t))){var k=m[1].toUpperCase();if(!seen[k]&&!skip[k]){seen[k]=1;add.push(k)}}
+if(!add.length){o.textContent='$티커 형식(예: $ABC)을 찾지 못했습니다. 아래 입력칸에 직접 담을 수도 있습니다.';return}
+add.forEach(function(k){addW(k,'답변에서 담음 '+new Date().toLocaleDateString('ko-KR'),null,true)});o.textContent='⭐ '+add.length+'개를 담았습니다: '+add.map(function(k){return '$'+k}).join(', ');toast('⭐ '+add.length+'개 담음');drawW()}
+/* ---------- 한눈에 (내 관심 종목) ---------- */
+function addW(k,memo,cg,quiet){if(k===undefined){k=$('wk').value;memo=$('wm').value}k=tk0(k);if(!k){alert('티커를 먼저 쓰세요');return}
+var f=null;W.forEach(function(w){if(w.k===k)f=w});if(f){if(memo)f.memo=memo;if(cg)f.cg=cg}else W.unshift({k:k,memo:memo||'',cg:cg||'',d:new Date().toLocaleDateString('ko-KR')});
+sv('gems_w',W);if(!quiet){$('wk').value='';$('wm').value='';drawW();toast('⭐ $'+k+' 담음')}}
+function delW(k){W=W.filter(function(w){return w.k!==k});sv('gems_w',W);drawW()}
+function drawW(){var o=$('wl');o.innerHTML='';var map={},order=[];
+W.forEach(function(w){map[w.k]={k:w.k,memo:w.memo,cg:w.cg,w:true};order.push(w.k)});
+H.forEach(function(h){if(!map[h.k]){map[h.k]={k:h.k};order.push(h.k)}if(!map[h.k].h)map[h.k].h=h});
+if(!order.length){var e=document.createElement('div');e.className='card small';e.textContent='아직 비어 있습니다. 🔎 찾기 탭에서 새로 조사하거나, 위에서 티커를 직접 담으세요.';o.appendChild(e);return}
+order.forEach(function(k){var m=map[k];var d=document.createElement('div');d.className='card';
+var b=document.createElement('b');b.textContent='⭐ $'+k;d.appendChild(b);
+var h=document.createElement('div');h.className='small';h.textContent=m.h?('✅ '+m.h.sc.toFixed(1)+'/10 · '+m.h.t+' · '+m.h.d):'아직 점검 전';d.appendChild(h);
+if(m.memo){var me=document.createElement('div');me.className='small';me.textContent='📝 '+m.memo;d.appendChild(me)}
+var lk=document.createElement('div');lk.innerHTML=lkRow(k,m.cg);d.appendChild(lk);
+var b1=document.createElement('button');b1.className='big';b1.textContent='✅ 12개 점검하러 가기';b1.onclick=function(){$('tk').value=k;ex2();tab(2)};d.appendChild(b1);
+d.appendChild(clink('$'+k+' 실시간 웹검색과 온체인으로 12대 정밀 필터 팩트 스캔해줘. 시총 순위(CMC 우선), 유통률, 언락, 고래 집중, 백도어·무한민팅, 업비트·빗썸 상장, 고점 대비 위치 포함.','🌐 Claude에서 실시간 분석 ↗'));
+if(m.w){var b2=document.createElement('button');b2.textContent='🗑 관심 종목에서 빼기';b2.onclick=function(){delW(k)};d.appendChild(b2)}
+o.appendChild(d)})}
+
+function vcount(){var n=document.getElementById('vt').value.length;document.getElementById('vc').textContent=n.toLocaleString('en-US')+'자'+(n>15000?' (앱 안 분석은 앞 15,000자만 사용, 대화창 전송은 전체 사용)':'')}
+function vidSend(){var t=document.getElementById('vt').value.trim(),o=document.getElementById('vr');if(t.length<50){toast('영상 내용을 먼저 붙여넣어 주세요');return}
+var p='[요청] 아래는 내가 유튜브에서 본 영상의 내용(자막)입니다. 다음 순서로 해줘.\n1) 영상이 말하는 코인을 모두 찾아줘. 이름이 직접 안 나오면 설명한 기능, 섹터, 인물, 상황으로 유추하고 근거와 확신도(상/중/하)를 표시해줘.\n2) 각 코인을 실시간 웹검색과 온체인 자료로 12대 정밀 필터(가치 환원, 언락, 고래 집중, 백도어·무한민팅, 유통률, 상장 거래소 등)로 검증해줘. 시총은 CoinMarketCap 기준, 없으면 CoinGecko 기준으로 시총 순위와 원화 환산도 같이.\n3) 영상이 광고·협찬이거나 펌프 유도로 보이는 신호, 이미 많이 오른 상태인지(고점 대비 위치), 업비트·빗썸 상장 여부를 점검해줘.\n4) 마지막에 코인별로 접근해도 되는지, 위험, 확인할 것을 표로 요약해줘. 투자 권유가 아니라 검증 결과로.\n\n[영상 내용]\n'+t;
+o.innerHTML='';var c=document.createElement('div');c.className='card';c.textContent='⏳ 복사 중...';o.appendChild(c);
+function link(){var a=document.createElement('a');a.className='big';a.target='_blank';a.rel='noopener';a.href=p.length<1800?('https://claude.ai/new?q='+encodeURIComponent(p)):'https://claude.ai/new';a.textContent='🌐 Claude 열기 ↗';o.appendChild(a)}
+var okf=function(){c.textContent='✅ 질문과 영상 내용이 복사되었습니다('+t.length.toLocaleString('en-US')+'자). 아래 버튼으로 Claude를 열고 입력창에 붙여넣기(PC: Ctrl+V, 폰: 입력창을 길게 눌러 붙여넣기)한 뒤 전송하세요.';link()};
+var fail=function(){c.textContent='자동 복사가 막혀 있습니다. 아래 칸의 글을 전체 선택해서 복사한 뒤 Claude 입력창에 붙여넣으세요.';var ta=document.createElement('textarea');ta.readOnly=true;ta.rows=6;ta.style.cssText='width:100%;box-sizing:border-box;font-size:16px;margin:6px 0';ta.value=p;o.appendChild(ta);link()};
+try{navigator.clipboard.writeText(p).then(okf,fail)}catch(e){fail()}}
+async function vidAI(){var t=$('vt').value.trim(),o=$('vr');o.innerHTML='';
+var st=document.createElement('div');st.className='card small';o.appendChild(st);
+if(t.length<50){st.textContent='영상 내용을 먼저 붙여넣어 주세요 (50자 이상).';return}
+st.textContent='⏳ 영상 내용에서 코인을 찾는 중... (최대 1분)';
+var p='아래는 유튜브 영상 내용(자막)이다. 영상이 말하는 코인을 모두 찾아라. 이름이 직접 안 나오면 설명한 기능, 섹터, 인물로 유추하고 how에 설명으로 추정이라고 적어라. 확신이 없으면 conf를 하로 하라. 광고, 협찬, 과장, 펌프 유도로 보이는 신호도 찾아라. 오직 JSON만 출력: {"coins":[{"n":"이름","t":"티커 모르면 빈칸","how":"직접 언급 또는 설명으로 추정","conf":"상 또는 중 또는 하","why":"영상의 어느 부분 이야기인지 한국어 한 줄"}],"warn":["과장·광고·펌프 의심 신호 한국어 한 줄씩"],"note":"한국어 한 줄 총평"}\n\n[영상 내용]\n'+t.slice(0,15000);
+var r=await ask([{role:'user',content:p}],{search:false});
+if(!r.ok){st.textContent='앱 안 분석이 안 됩니다('+r.err+'). 위의 "Claude 대화창으로 보내서 실시간 추적"을 쓰세요.';return}
+var j=jparse(r.text);var L=(j&&j.coins)||[];
+if(!j){st.innerHTML=rich(r.text);return}
+st.textContent=L.length?'🧠 영상에서 찾은 코인 '+L.length+'개 (1차 추정)':'영상에서 코인을 찾지 못했습니다.';
+L.forEach(function(x){var d=document.createElement('div');d.className='card';var h=document.createElement('b');h.textContent=(x.n||'이름 불명')+(x.t?' ($'+x.t+')':'')+' · 확신도 '+(x.conf||'?');d.appendChild(h);
+var a=document.createElement('div');a.className='small';a.textContent='📍 '+(x.how||'')+' — '+(x.why||'');d.appendChild(a);
+if(x.t){var k=tk0(x.t);var l=document.createElement('div');l.innerHTML=lkRow(k);d.appendChild(l);var b1=document.createElement('button');b1.className='big';b1.textContent='🔍 이 종목 실시간 점검하러 가기';b1.onclick=function(){$('tk').value=k;ex2();tab(2)};d.appendChild(b1)}
+d.appendChild(clink('영상에서 나온 코인 '+(x.n||'')+(x.t?' ($'+x.t+')':'')+'을 실시간 웹검색과 온체인으로 12대 정밀 필터 팩트 스캔해줘. 시총 순위(CMC 우선), 유통률, 언락, 고래 집중, 백도어, 업비트·빗썸 상장, 고점 대비 위치 포함. 광고나 펌프 가능성도 점검해줘.','🌐 Claude에서 실시간 추적 ↗'));o.appendChild(d)});
+if(j.warn&&j.warn.length){var w=document.createElement('div');w.className='card small';w.textContent='🚩 의심 신호: '+j.warn.join(' / ');o.appendChild(w)}
+if(j.note){var n=document.createElement('div');n.className='card small';n.textContent='📝 '+j.note;o.appendChild(n)}}
+
+calc();num();kr();draw();drawW();initSto();tab(0);
+</script>
+</body></html>
