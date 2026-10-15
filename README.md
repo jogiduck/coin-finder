@@ -1,4 +1,4 @@
-# Gems Research
+# 레아파인더
 
 개인용 리서치 워크벤치. 정적 HTML은 `index.html`, 선택형 데이터 조회는 Vercel serverless function `api/research.js`가 담당합니다.
 
